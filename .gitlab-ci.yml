@@ -1,0 +1,36 @@
+stages:
+  - test
+  - build
+
+phpunit:
+  stage: test
+  image: php:8.2
+  services:
+    - name: postgres:16
+      alias: postgres
+  variables:
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: 5432
+    DB_DATABASE: patient_results
+    DB_USERNAME: postgres
+    DB_PASSWORD: postgres
+    APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  before_script:
+    - apt-get update && apt-get install -y git unzip libpq-dev libzip-dev libxml2-dev
+    - docker-php-ext-install pdo_pgsql zip
+    - php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+    - php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+    - composer install --no-interaction --prefer-dist --no-progress
+    - cp .env.example .env
+    - php artisan key:generate
+    - php artisan migrate --force
+  script:
+    - php artisan test
+
+frontend-build:
+  stage: build
+  image: node:20
+  script:
+    - npm install
+    - npm run build
